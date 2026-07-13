@@ -414,26 +414,32 @@ function analyseGrow() {
   }
   const seconds = Math.max(.25, (samples.at(-1).t - samples[0].t) / 1000);
   const frequency = crossings / seconds / 2;
-  const meanX = samples.reduce((sum, sample) => sum + sample.ax, 0) / samples.length;
   const meanY = samples.reduce((sum, sample) => sum + sample.ay, 0) / samples.length;
-  const xSpread = Math.sqrt(samples.reduce((sum, sample) => sum + (sample.ax - meanX) ** 2, 0) / samples.length);
+  const xSpread = Math.sqrt(samples.reduce((sum, sample) => sum + sample.ax ** 2, 0) / samples.length);
   const ySpread = Math.sqrt(samples.reduce((sum, sample) => sum + (sample.ay - meanY) ** 2, 0) / samples.length);
   const rotation = samples.reduce((sum, sample) => sum + Math.hypot(sample.alpha, sample.beta, sample.gamma), 0) / samples.length;
-  const meanTilt = samples.reduce((sum, sample) => sum + (sample.tiltGamma || 0), 0) / samples.length;
   const spanRatio = clamp((samples.length / seconds) / 45, 0, 1);
   const energy = amplitude + frequency * .7 + rotation / 55;
-  const directionalFlow = clamp(meanX / Math.max(.28, xSpread * .62) + meanTilt / 32, -1, 1);
-  const wind = Math.sign(directionalFlow) * Math.pow(Math.abs(directionalFlow), .86) * .32;
-  const sideBias = clamp(directionalFlow * .42, -.42, .42);
+  const strongestHorizontal = samples.reduce((strongest, sample) => (
+    Math.abs(sample.ax) > Math.abs(strongest) ? sample.ax : strongest
+  ), 0);
+  const peakMagnitude = Math.max(...magnitudes);
+  const shakeStrength = clamp(Math.max(
+    (amplitude - 2.6) / 5,
+    (peakMagnitude - 16) / 28,
+    (rotation - 120) / 260,
+  ), 0, 1);
+  const shakeDirection = Math.sign(strongestHorizontal || 1);
+  const gentleWind = shakeDirection * shakeStrength;
   const sparseImpulse = clamp(1 - spanRatio, 0, 1);
   const organic = seededUnit(samples.length * 13.17 + amplitude * 91 + rotation * 3.7);
   state.params = {
-    lean: clamp(wind * .5, -.18, .18),
+    lean: gentleWind * .08,
     height: clamp(.78 + ySpread * .08 + rotation / 260, .78, 1.08),
     depth: Math.round(clamp(12.5 + spanRatio * 1.5 + frequency * .45 + organic * 1.25, 12, 16)),
     amplitude: clamp(.72 + xSpread * .1 + frequency * .04 + organic * .12, .7, 1.16),
-    sideBias,
-    wind,
+    sideBias: gentleWind * .06,
+    wind: gentleWind * .1,
     void: clamp(.08 + sparseImpulse * .25 + (1 - organic) * .16 + rotation / 280, .08, .46),
     irregularity: clamp(.08 + amplitude * .08 + frequency * .06 + (1 - organic) * .14, .08, .48),
     growth: clamp(.24 + organic * .34 + samples.length / 700 + energy * .07, .22, .84),
@@ -650,14 +656,14 @@ function drawTree(canvas, params, options = {}) {
   const depth = Math.round(clamp(params.depth || 15, 13, TREE_DEPTH));
   const sourceAmplitude = clamp(params.amplitude || 1, .68, 1.34);
   const sourceHeight = clamp(params.height || 1, .76, 1.22);
-  const sourceLean = clamp(params.lean || 0, -.26, .26);
-  const sourceWind = clamp(params.wind ?? params.sideBias ?? sourceLean, -.36, .36);
+  const sourceLean = clamp(params.lean || 0, -.08, .08);
+  const sourceWind = clamp(params.wind || 0, -.1, .1);
   const amplitude = options.roulette ? clamp(sourceAmplitude * .86, .78, 1.08) : sourceAmplitude;
   const height = options.roulette ? clamp(sourceHeight * .9, .84, 1.02) : sourceHeight;
-  const lean = options.roulette ? clamp(sourceLean, -.56, .56) : sourceLean;
-  const rootOffset = options.roulette ? 0 : -sourceWind * w * .07;
+  const lean = sourceLean;
+  const rootOffset = -sourceWind * w * .015;
   tree.translate(w / 2 + rootOffset, h * (options.stage ? .84 : .69));
-  const sideBias = clamp(params.sideBias || 0, -1, 1);
+  const sideBias = clamp(params.sideBias || 0, -.06, .06);
   const crownVoid = clamp(params.void || 0, 0, .5);
   const irregularity = clamp(params.irregularity || 0, 0, .6);
   const growth = clamp(params.growth ?? 1, .16, 1);
@@ -706,7 +712,7 @@ function drawTree(canvas, params, options = {}) {
       return true;
     };
     const branchSpread = options.roulette ? 20 : 18;
-    const windTurn = sourceWind * (options.roulette ? .35 : .45) * (1 + level * .04);
+    const windTurn = sourceWind * .22 * (1 + level * .02);
     const leftAngle = angle - branchSpread + windTurn;
     const rightAngle = angle + branchSpread + windTurn;
     if (canGrow(leftAngle, path * 2 + 1)) branch(x2, y2, leftAngle, childDepth, path * 2 + 1);
