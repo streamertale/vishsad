@@ -62,6 +62,7 @@ const state = {
   sourceLabel: '',
   selectedSeconds: 0,
   selectedQuote: null,
+  ritualStartedAt: 0,
 };
 
 function safeSavedCards() {
@@ -158,6 +159,13 @@ function renderReader() {
 
 renderReader();
 
+const orchardPreload = new Image();
+const revealActPhotos = () => $('.acts').classList.add('photos-ready');
+orchardPreload.addEventListener('load', revealActPhotos, { once: true });
+orchardPreload.addEventListener('error', revealActPhotos, { once: true });
+orchardPreload.src = 'assets/orchard.png';
+if (orchardPreload.complete) revealActPhotos();
+
 function beginAct(act) {
   state.act = act;
   state.seed = Math.random() * 1000;
@@ -175,6 +183,7 @@ function beginAct(act) {
   $('#growthDuration').textContent = cut
     ? `Резкий взмах как мгновение за ${state.selectedSeconds} секунд`
     : `От вишнёвой косточки до ягоды за ${state.selectedSeconds} секунд`;
+  state.ritualStartedAt = performance.now();
   if (cut) {
     const source = [...state.saved].reverse().find((card) => card.act === 'grow');
     if (source?.params) state.params = { ...state.params, ...source.params };
@@ -379,17 +388,19 @@ function stopAnimation() {
 
 function analyseGrow() {
   if (state.samples.length < 3) {
+    const seed = Math.random() * 1000;
+    const openness = seededUnit(seed);
     state.params = {
       lean: 0,
-      height: .78,
-      depth: 13,
-      amplitude: .68,
+      height: .78 + openness * .12,
+      depth: Math.round(12 + openness * 3),
+      amplitude: .7 + openness * .18,
       sideBias: 0,
       wind: 0,
-      void: .05,
-      irregularity: .06,
-      growth: .18,
-      seed: Math.random() * 1000,
+      void: .1 + (1 - openness) * .2,
+      irregularity: .1 + (1 - openness) * .18,
+      growth: .24 + openness * .34,
+      seed,
     };
     return;
   }
@@ -412,19 +423,20 @@ function analyseGrow() {
   const spanRatio = clamp((samples.length / seconds) / 45, 0, 1);
   const energy = amplitude + frequency * .7 + rotation / 55;
   const directionalFlow = clamp(meanX / Math.max(.28, xSpread * .62) + meanTilt / 32, -1, 1);
-  const wind = Math.sign(directionalFlow) * Math.pow(Math.abs(directionalFlow), .82);
-  const sideBias = clamp(directionalFlow * .92, -1, 1);
+  const wind = Math.sign(directionalFlow) * Math.pow(Math.abs(directionalFlow), .86) * .32;
+  const sideBias = clamp(directionalFlow * .42, -.42, .42);
   const sparseImpulse = clamp(1 - spanRatio, 0, 1);
+  const organic = seededUnit(samples.length * 13.17 + amplitude * 91 + rotation * 3.7);
   state.params = {
-    lean: clamp(wind * .72, -.72, .72),
-    height: clamp(.76 + ySpread * .14 + rotation / 180, .76, 1.24),
-    depth: Math.round(clamp(13 + spanRatio * 2.1 + frequency * .95 + amplitude * .55, 13, 17)),
-    amplitude: clamp(.66 + xSpread * .19 + frequency * .08, .66, 1.38),
+    lean: clamp(wind * .5, -.18, .18),
+    height: clamp(.78 + ySpread * .08 + rotation / 260, .78, 1.08),
+    depth: Math.round(clamp(12.5 + spanRatio * 1.5 + frequency * .45 + organic * 1.25, 12, 16)),
+    amplitude: clamp(.72 + xSpread * .1 + frequency * .04 + organic * .12, .7, 1.16),
     sideBias,
     wind,
-    void: clamp(.04 + sparseImpulse * .34 + rotation / 150, .04, .48),
-    irregularity: clamp(.06 + amplitude * .12 + frequency * .1, .06, .56),
-    growth: clamp(.18 + samples.length / 420 + energy * .16, .18, 1),
+    void: clamp(.08 + sparseImpulse * .25 + (1 - organic) * .16 + rotation / 280, .08, .46),
+    irregularity: clamp(.08 + amplitude * .08 + frequency * .06 + (1 - organic) * .14, .08, .48),
+    growth: clamp(.24 + organic * .34 + samples.length / 700 + energy * .07, .22, .84),
     seed: samples.length * 13.17 + amplitude * 91 + rotation * 3.7,
     energy,
   };
@@ -484,8 +496,8 @@ function resizeCanvas(canvas) {
 function drawRitualStage(time = performance.now()) {
   if (!$('.ritual').classList.contains('is-active')) return;
   if (state.act === 'grow') {
-    const { ctx, w, h } = resizeCanvas($('#generativeCanvas'));
-    ctx.clearRect(0, 0, w, h);
+    const reveal = clamp((time - state.ritualStartedAt) / 14000, 0, 1);
+    drawPythagorasField($('#generativeCanvas'), time, state.seed, 0, reveal, true);
   } else {
     drawSourcePreview($('#sourcePreview'));
     drawCutForm($('#generativeCanvas'), time, 0, false);
@@ -496,21 +508,21 @@ function drawRitualStage(time = performance.now()) {
 function drawLive(progress, time) {
   const canvas = $('#liveCanvas');
   if (state.act === 'grow') {
-    drawPythagorasField(canvas, time, state.seed, state.liveEnergy, progress, false);
+    drawPythagorasField(canvas, time, state.seed, 0, progress, false);
   } else {
     drawCutForm(canvas, time, progress, true);
   }
 }
 
-function drawPythagorasField(canvas, time, seed, motionEnergy = 0, progress = 0, ritual = false) {
+function drawPythagorasField(canvas, time, seed, _motionEnergy = 0, progress = 0, ritual = false) {
   const { ctx, w, h, d } = resizeCanvas(canvas);
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = '#020202';
   ctx.fillRect(0, 0, w, h);
   const t = time / 1000;
-  const reveal = ritual ? 0 : clamp(progress, 0, 1);
-  const speed = .42 + clamp(motionEnergy * .55, 0, 1.15);
-  const copies = ritual ? 1 : Math.round(2 + reveal * 13 + clamp(motionEnergy * 1.6, 0, 3));
+  const reveal = clamp(progress, 0, 1);
+  const speed = ritual ? .13 : .18;
+  const copies = ritual ? 10 : 15;
 
   function pythagoras(ax, ay, bx, by, depth, theta, rootDepth, alpha) {
     const dx = bx - ax;
@@ -547,24 +559,20 @@ function drawPythagorasField(canvas, time, seed, motionEnergy = 0, progress = 0,
   for (let copy = 0; copy < copies; copy++) {
     const phase = copy * 2.399963 + seed * .017;
     const direction = copy % 2 ? -1 : 1;
-    const arrival = ritual ? 1 : clamp(reveal * 1.65 - copy / Math.max(1, copies) * .55, 0, 1);
-    if (!ritual && arrival <= 0) continue;
-    const zoomCycle = (t * .045 * speed + copy / Math.max(1, copies) + seed * .002) % 1;
-    const zoom = Math.pow(PHI, (zoomCycle - .5) * 1.55);
-    const spread = ritual ? 0 : .14 + reveal * .38;
-    const x = ritual
-      ? w * .5
-      : w * (.5 + (seededUnit(seed + copy * 17.3) - .5) * 2 * spread);
-    const y = ritual
-      ? h * .9
-      : h * (.57 + (seededUnit(seed + copy * 29.1) - .5) * 1.72 * spread);
-    const base = Math.min(w, h) * (ritual ? .07 : (.07 + reveal * .075 + (copy % 3) * .012)) * zoom * (.6 + arrival * .52);
+    const arrival = clamp(reveal * 1.4 - copy / copies * .88, 0, 1);
+    if (arrival <= 0) continue;
+    const zoomCycle = (t * .018 * speed + copy / copies + seed * .002) % 1;
+    const zoom = Math.pow(PHI, (zoomCycle - .5) * 1.15);
+    const spread = .07 + reveal * (ritual ? .33 : .38);
+    const x = w * (.5 + (seededUnit(seed + copy * 17.3) - .5) * 2 * spread);
+    const y = h * (.58 + (seededUnit(seed + copy * 29.1) - .5) * 1.55 * spread);
+    const base = Math.min(w, h) * (.055 + reveal * .055 + (copy % 3) * .009) * zoom * (.48 + arrival * .5);
     const theta = (39 + 10 * Math.sin(t * .1 * speed + phase)) * Math.PI / 180;
-    const depth = ritual ? 6 : 6 + (copy % 3);
-    const alpha = ritual ? .22 : .11 + arrival * .15;
+    const depth = 5 + (copy % 3);
+    const alpha = .045 + arrival * (ritual ? .2 : .18);
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(t * (.032 + copy * .0025) * speed * direction + phase * .09);
+    ctx.rotate(t * (.014 + copy * .0014) * speed * direction + phase * .09);
     pythagoras(-base / 2, 0, base / 2, 0, depth, theta, depth, alpha);
     ctx.restore();
   }
@@ -642,19 +650,19 @@ function drawTree(canvas, params, options = {}) {
   const depth = Math.round(clamp(params.depth || 15, 13, TREE_DEPTH));
   const sourceAmplitude = clamp(params.amplitude || 1, .68, 1.34);
   const sourceHeight = clamp(params.height || 1, .76, 1.22);
-  const sourceLean = clamp(params.lean || 0, -.76, .76);
-  const sourceWind = clamp(params.wind ?? params.sideBias ?? sourceLean, -1, 1);
+  const sourceLean = clamp(params.lean || 0, -.26, .26);
+  const sourceWind = clamp(params.wind ?? params.sideBias ?? sourceLean, -.36, .36);
   const amplitude = options.roulette ? clamp(sourceAmplitude * .86, .78, 1.08) : sourceAmplitude;
   const height = options.roulette ? clamp(sourceHeight * .9, .84, 1.02) : sourceHeight;
   const lean = options.roulette ? clamp(sourceLean, -.56, .56) : sourceLean;
-  const rootOffset = options.roulette ? 0 : -sourceWind * w * .17;
+  const rootOffset = options.roulette ? 0 : -sourceWind * w * .07;
   tree.translate(w / 2 + rootOffset, h * (options.stage ? .84 : .69));
   const sideBias = clamp(params.sideBias || 0, -1, 1);
   const crownVoid = clamp(params.void || 0, 0, .5);
   const irregularity = clamp(params.irregularity || 0, 0, .6);
   const growth = clamp(params.growth ?? 1, .16, 1);
   const treeSeed = params.seed || 1;
-  tree.transform(amplitude, 0, -lean * (options.roulette ? .5 : .7), height, 0, 0);
+  tree.transform(amplitude, 0, -lean * (options.roulette ? .34 : .42), height, 0, 0);
   const unit = h * (options.stage ? .72 : .5) / (3 * depth * (depth + 1));
   const maxLevel = depth;
   const visibleProgress = options.progress ?? 1;
@@ -669,7 +677,7 @@ function drawTree(canvas, params, options = {}) {
     const y2 = y1 + Math.sin(radians) * length;
     const color = Math.floor(255 * branchDepth / TREE_DEPTH);
     tree.strokeStyle = `rgba(${color},${color},${color},${options.alpha ?? 1})`;
-    tree.lineWidth = Math.max(.72 * d, branchDepth / 5 * d);
+    tree.lineWidth = Math.max(.38 * d, branchDepth / 8 * d);
     tree.beginPath();
     tree.moveTo(x1, y1);
     tree.lineTo(x2, y2);
@@ -697,8 +705,8 @@ function drawTree(canvas, params, options = {}) {
       if (returnsToCenter && random < crownVoid * 1.9) return false;
       return true;
     };
-    const branchSpread = options.roulette ? 20 : 15;
-    const windTurn = sourceWind * (options.roulette ? .7 : 1) * (1 + level * .1);
+    const branchSpread = options.roulette ? 20 : 18;
+    const windTurn = sourceWind * (options.roulette ? .35 : .45) * (1 + level * .04);
     const leftAngle = angle - branchSpread + windTurn;
     const rightAngle = angle + branchSpread + windTurn;
     if (canGrow(leftAngle, path * 2 + 1)) branch(x2, y2, leftAngle, childDepth, path * 2 + 1);
@@ -707,8 +715,15 @@ function drawTree(canvas, params, options = {}) {
   branch(0, 0, -90, depth, 1);
   tree.restore();
 
+  ctx.save();
+  if (Number.isFinite(options.clipBottom)) {
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h * options.clipBottom);
+    ctx.clip();
+  }
   if (options.cut) drawCutTree(ctx, layer, w, h, d, state.cut);
   else ctx.drawImage(layer, 0, 0);
+  ctx.restore();
 }
 
 function kochPoints(x1, y1, x2, y2, iterations, direction = -1) {
@@ -785,6 +800,11 @@ function drawExportCutOverlay(ctx, w, h, cut) {
 
 function drawResult() {
   const canvas = $('#treeCanvas');
+  const cardRect = $('#resultCard').getBoundingClientRect();
+  const copyRect = $('.card-copy').getBoundingClientRect();
+  const clipBottom = cardRect.height
+    ? clamp((copyRect.top - cardRect.top) / cardRect.height - .025, .58, .76)
+    : .7;
   if (state.act === 'cut' && state.sourceImage?.complete) {
     const { ctx, w, h, d } = resizeCanvas(canvas);
     ctx.clearRect(0, 0, w, h);
@@ -794,7 +814,7 @@ function drawResult() {
     drawImageCover(layer.getContext('2d'), state.sourceImage, w, h);
     drawCutTree(ctx, layer, w, h, d, state.cut);
   } else {
-    drawTree(canvas, state.params, { cut: state.act === 'cut' });
+    drawTree(canvas, state.params, { cut: state.act === 'cut', clipBottom });
   }
 }
 
