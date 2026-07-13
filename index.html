@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <title>Вишневый сад — А. П. Чехов</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main id="app" aria-live="polite">
+    <section class="screen intro is-active" data-screen="intro">
+      <button class="intro-enter" id="introEnter" type="button" aria-label="Перейти к выбору действия"></button>
+      <div class="paint" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="intro-copy">
+        <h1>Вишневый<br />сад</h1>
+        <p class="playwright">А.П. Чехов</p>
+      </div>
+      <button class="reader-button" id="openReader" type="button" aria-label="Открыть полный текст пьесы">
+        <svg viewBox="0 0 64 48" aria-hidden="true">
+          <path d="M4 8c9-3 18-1 28 5v29C22 36 13 34 4 37V8Z" />
+          <path d="M60 8c-9-3-18-1-28 5v29c10-6 19-8 28-5V8Z" />
+          <path d="M32 13v29" />
+          <path d="M9 14c7-1 13 1 18 4M9 21c7-1 13 1 18 4M55 14c-7-1-13 1-18 4M55 21c-7-1-13 1-18 4" />
+        </svg>
+      </button>
+    </section>
+
+    <section class="screen reader" data-screen="reader" aria-label="Полный текст пьесы">
+      <div class="reader-shell">
+        <button class="reader-back icon-button" data-go="intro" type="button" aria-label="Закрыть книгу">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M25 16H7M13 10l-6 6 6 6"/></svg>
+        </button>
+        <div class="reader-scroll" id="readerScroll" tabindex="0">
+          <article class="reader-text" id="readerText"></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen acts" data-screen="acts">
+      <button class="acts-home icon-button" data-go="intro" type="button" aria-label="Вернуться на главный экран">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M25 16H7M13 10l-6 6 6 6"/></svg>
+      </button>
+      <button class="act-panel act-one" data-act="grow">
+        <span class="act-photo" aria-hidden="true"></span>
+        <span class="act-index">I</span>
+        <span class="act-content">
+          <small>Действие первое</small>
+          <strong>Вырастить<br />будущее</strong>
+        </span>
+      </button>
+      <button class="act-panel act-two" data-act="cut">
+        <span class="act-photo" aria-hidden="true"></span>
+        <span class="act-index">II</span>
+        <span class="act-content">
+          <small>Действие второе</small>
+          <strong>Отсечь<br />прошлое</strong>
+        </span>
+      </button>
+      <div class="saved-field" id="savedField" aria-label="Сохранённые карточки"></div>
+    </section>
+
+    <section class="screen ritual" data-screen="ritual" tabindex="0" aria-label="Начать движение">
+      <button class="back icon-button" data-go="acts" aria-label="Вернуться к выбору">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M25 16H7M13 10l-6 6 6 6"/></svg>
+      </button>
+      <header class="ritual-head">
+        <p class="overline" id="ritualAct">Действие первое</p>
+        <h2 id="ritualTitle">Вырастить<br />будущее</h2>
+      </header>
+      <p class="ritual-note" id="ritualText">Телефон в кисти руки — это ветвь вишнёвого дерева, которая становится продолжением вас и принимает новую форму.</p>
+      <p class="growth-duration" id="growthDuration" aria-live="polite"></p>
+      <div class="source-controls" id="sourceControls" aria-label="Источник карточки">
+        <label class="source-choice" for="cardUpload" aria-label="Загрузить карточку">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 25h18V12l-5-5H7v18Z"/><path d="M16 21V11m-4 4 4-4 4 4"/></svg>
+        </label>
+        <input id="cardUpload" type="file" accept="image/*" />
+        <button class="source-choice" id="chooseSaved" type="button" aria-label="Выбрать сохранённую карточку">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="9" width="15" height="18"/><rect x="11" y="5" width="15" height="18"/></svg>
+        </button>
+      </div>
+      <div class="generative-stage" id="generativeStage">
+        <canvas id="generativeCanvas"></canvas>
+        <canvas id="sourcePreview" aria-hidden="true"></canvas>
+      </div>
+    </section>
+
+    <section class="screen recording" data-screen="recording">
+      <canvas id="liveCanvas"></canvas>
+      <output class="time-signal" id="timeSignal" aria-label="Оставшееся время"></output>
+    </section>
+
+    <section class="screen result" data-screen="result">
+      <div class="result-card silent-frame" id="resultCard">
+        <span class="frame-corner tl" aria-hidden="true"></span>
+        <span class="frame-corner tr" aria-hidden="true"></span>
+        <span class="frame-corner bl" aria-hidden="true"></span>
+        <span class="frame-corner br" aria-hidden="true"></span>
+        <header>
+          <time id="cardDate"></time>
+        </header>
+        <canvas id="treeCanvas"></canvas>
+        <div class="card-copy">
+          <figure>
+            <blockquote id="cardQuote">«Вся Россия — наш сад.»</blockquote>
+            <figcaption id="cardQuoteAuthor">Петя Трофимов</figcaption>
+          </figure>
+          <footer>
+            <h2>Вишневый сад</h2>
+            <p>А.П. Чехов</p>
+          </footer>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button class="icon-button" id="saveCard" aria-label="Сохранить карточку">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4v17M10 15l6 6 6-6M6 25h20"/></svg>
+        </button>
+        <button class="icon-button" id="returnActs" aria-label="Вернуться к выбору действий">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 15.5 16 7l10 8.5M9 14v11h14V14M13 25v-7h6v7"/></svg>
+        </button>
+      </div>
+    </section>
+  </main>
+  <script src="reader-content.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
