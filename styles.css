@@ -112,8 +112,8 @@ figcaption{font:10px/1.3 var(--sans);letter-spacing:.08em;text-transform:upperca
 @keyframes timeFromLeft{from{opacity:0;transform:translateX(-46vw)}to{opacity:1;transform:none}}
 @keyframes timeFromRight{from{opacity:0;transform:translateX(46vw)}to{opacity:1;transform:none}}
 
-.result{padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;justify-content:center;gap:22px;overflow:auto}
-.result-card{width:min(100%,430px,calc(72vh * .75));aspect-ratio:3/4;position:relative;overflow:hidden;background:#030303}
+.result{padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;justify-content:center;gap:15px;overflow:auto}
+.result-card{width:min(100%,440px,calc(82vh * .7143));aspect-ratio:5/7;position:relative;overflow:hidden;background:#030303}
 .silent-frame{border:1px solid #d6d2cb;box-shadow:0 0 0 7px #120507,0 0 0 8px #5b4d49}
 .silent-frame:before,.silent-frame:after{content:"";position:absolute;z-index:4;left:16%;right:16%;height:14px;border-top:1px solid #d6d2cb}
 .silent-frame:before{top:17px}.silent-frame:after{bottom:17px;transform:rotate(180deg)}
@@ -133,10 +133,10 @@ figcaption{font:10px/1.3 var(--sans);letter-spacing:.08em;text-transform:upperca
 .card-copy footer{text-align:right}
 .card-copy h2{font:400 clamp(18px,5vw,25px)/.95 var(--serif);letter-spacing:-.035em;margin:0}
 .card-copy footer p{font:10px var(--serif);letter-spacing:.08em;margin:8px 0 0}
-.result-actions{display:flex;justify-content:center;gap:46px;width:min(100%,430px)}
+.result-actions{display:flex;justify-content:center;gap:32px;width:min(100%,440px)}
 .result-actions .icon-button{width:50px;height:50px;border:1px solid var(--faint)}
 .result-actions .icon-button:active{background:var(--ink);color:var(--black)}
 
 @media(min-width:760px){body{background:#0a0a0a}#app{max-width:480px;margin:auto;position:relative;box-shadow:0 0 90px #000}.screen{max-width:480px;left:50%;transform:translateX(-50%)}.screen.is-active{animation:filmIn .55s steps(7,end) both}.paint{right:-40px;width:270px}}
-@media(max-height:690px){.intro-copy{margin-top:2vh}.ritual-head{margin-top:2vh}.ritual h2{font-size:48px}.ritual-note{margin-top:18px}.generative-stage{margin-top:12px}.result{justify-content:flex-start}.result-card{width:min(100%,430px,calc(78vh * .75))}}
+@media(max-height:690px){.intro-copy{margin-top:2vh}.ritual-head{margin-top:2vh}.ritual h2{font-size:48px}.ritual-note{margin-top:18px}.generative-stage{margin-top:12px}.result{justify-content:flex-start}.result-card{width:min(100%,440px,calc(84vh * .7143))}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}

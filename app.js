@@ -299,13 +299,13 @@ function startCapture() {
     state.liveEnergy = state.liveEnergy * .66 + movement * .34;
     previousMotion = sample;
     // Very small wrist movements count; only true sensor noise is ignored.
-    if (movement > .012) state.samples.push(sample);
+    if (movement > .006) state.samples.push(sample);
   };
   const onOrientation = (event) => {
     const next = { beta: event.beta || 0, gamma: event.gamma || 0 };
     const tiltDelta = Math.hypot(next.beta - previousOrientation.beta, next.gamma - previousOrientation.gamma);
     state.orientation = next;
-    if (tiltDelta > .06) {
+    if (tiltDelta > .025) {
       const sample = {
         t: performance.now(),
         ax: (next.gamma - previousOrientation.gamma) * .7,
@@ -318,7 +318,7 @@ function startCapture() {
         tiltGamma: next.gamma,
       };
       state.samples.push(sample);
-      state.liveEnergy = state.liveEnergy * .7 + tiltDelta * .09;
+      state.liveEnergy = state.liveEnergy * .64 + tiltDelta * .13;
     }
     previousOrientation = next;
   };
@@ -331,8 +331,8 @@ function startCapture() {
     const dx = event.clientX - state.pointer.x;
     const dy = event.clientY - state.pointer.y;
     const movement = Math.hypot(dx, dy);
-    state.liveEnergy = state.liveEnergy * .62 + movement * .045;
-    if (movement > .12) {
+    state.liveEnergy = state.liveEnergy * .58 + movement * .055;
+    if (movement > .07) {
       state.samples.push({
         t: now,
         ax: dx / 2.4,
@@ -415,10 +415,11 @@ function analyseGrow() {
   const seconds = Math.max(.25, (samples.at(-1).t - samples[0].t) / 1000);
   const frequency = crossings / seconds / 2;
   const meanY = samples.reduce((sum, sample) => sum + sample.ay, 0) / samples.length;
+  const meanX = samples.reduce((sum, sample) => sum + sample.ax, 0) / samples.length;
   const xSpread = Math.sqrt(samples.reduce((sum, sample) => sum + sample.ax ** 2, 0) / samples.length);
   const ySpread = Math.sqrt(samples.reduce((sum, sample) => sum + (sample.ay - meanY) ** 2, 0) / samples.length);
   const rotation = samples.reduce((sum, sample) => sum + Math.hypot(sample.alpha, sample.beta, sample.gamma), 0) / samples.length;
-  const spanRatio = clamp((samples.length / seconds) / 45, 0, 1);
+  const spanRatio = clamp((samples.length / seconds) / 34, 0, 1);
   const energy = amplitude + frequency * .7 + rotation / 55;
   const strongestHorizontal = samples.reduce((strongest, sample) => (
     Math.abs(sample.ax) > Math.abs(strongest) ? sample.ax : strongest
@@ -431,18 +432,19 @@ function analyseGrow() {
   ), 0, 1);
   const shakeDirection = Math.sign(strongestHorizontal || 1);
   const gentleWind = shakeDirection * shakeStrength;
+  const directionalBias = clamp(meanX / Math.max(1.4, xSpread * 1.7), -.72, .72);
   const sparseImpulse = clamp(1 - spanRatio, 0, 1);
   const organic = seededUnit(samples.length * 13.17 + amplitude * 91 + rotation * 3.7);
   state.params = {
     lean: gentleWind * .08,
-    height: clamp(.78 + ySpread * .08 + rotation / 260, .78, 1.08),
-    depth: Math.round(clamp(12.5 + spanRatio * 1.5 + frequency * .45 + organic * 1.25, 12, 16)),
-    amplitude: clamp(.72 + xSpread * .1 + frequency * .04 + organic * .12, .7, 1.16),
-    sideBias: gentleWind * .06,
+    height: clamp(.74 + ySpread * .105 + rotation / 230 + organic * .06, .74, 1.12),
+    depth: Math.round(clamp(12 + spanRatio * 2.1 + frequency * .55 + organic * 1.7, 12, 17)),
+    amplitude: clamp(.66 + xSpread * .14 + frequency * .055 + organic * .18, .66, 1.26),
+    sideBias: clamp(directionalBias * (.34 + spanRatio * .38), -.56, .56),
     wind: gentleWind * .1,
-    void: clamp(.08 + sparseImpulse * .25 + (1 - organic) * .16 + rotation / 280, .08, .46),
-    irregularity: clamp(.08 + amplitude * .08 + frequency * .06 + (1 - organic) * .14, .08, .48),
-    growth: clamp(.24 + organic * .34 + samples.length / 700 + energy * .07, .22, .84),
+    void: clamp(.06 + sparseImpulse * .3 + (1 - organic) * .22 + rotation / 260, .06, .54),
+    irregularity: clamp(.06 + amplitude * .1 + frequency * .075 + (1 - organic) * .18, .06, .56),
+    growth: clamp(.2 + organic * .42 + samples.length / 570 + energy * .085, .2, .9),
     seed: samples.length * 13.17 + amplitude * 91 + rotation * 3.7,
     energy,
   };
@@ -618,28 +620,45 @@ function drawCutForm(canvas, time, progress, withSource) {
     ctx.fillRect(0, 0, w, h);
   }
   const t = time / 1000;
-  const cx = w / 2;
-  const cy = h * .53;
-  const radius = Math.hypot(w, h) * .68;
+  const baseCx = w / 2;
+  const baseCy = h * .53;
+  const radius = Math.hypot(w, h) * .7;
   const charges = clamp(state.cut.charges || 1, 1, 3);
   const rotation = state.cut.phase + t * CUT_SPIN;
   for (let charge = 0; charge < charges; charge++) {
-    const offset = (charge - (charges - 1) / 2) * .29;
-    const centerAngle = rotation + offset;
-    const width = .48 / Math.pow(charges, .2) + progress * .05;
+    const variant = seededUnit(state.seed + charge * 37.9 + state.cut.phase * 19.3);
+    const offset = (charge - (charges - 1) / 2) * (.25 + variant * .14);
+    const direction = charge % 2 ? -.72 : 1;
+    const drift = Math.sin(t * (.07 + variant * .035) + variant * TAU) * (.035 + variant * .06);
+    const centerAngle = rotation * direction + offset + drift;
+    const width = (.34 + variant * .25) / Math.pow(charges, .18) + progress * .045;
     const a1 = centerAngle - width / 2;
     const a2 = centerAngle + width / 2;
-    const edge1 = kochPoints(cx, cy, cx + Math.cos(a1) * radius, cy + Math.sin(a1) * radius, 2, charge % 2 ? 1 : -1);
-    const edge2 = kochPoints(cx, cy, cx + Math.cos(a2) * radius, cy + Math.sin(a2) * radius, 2, charge % 2 ? -1 : 1);
+    const localRadius = radius * (.82 + variant * .18);
+    const innerRadius = Math.min(w, h) * (.05 + variant * .14);
+    const cx = baseCx + Math.cos(state.cut.phase + charge * 2.1) * w * (.018 + variant * .025);
+    const cy = baseCy + Math.sin(state.cut.phase + charge * 1.7) * h * (.012 + variant * .018);
+    const iterations = Math.round(clamp(state.cut.frequency + (variant > .74 ? 1 : 0), 1, 3));
+    const inner1 = { x: cx + Math.cos(a1) * innerRadius, y: cy + Math.sin(a1) * innerRadius };
+    const inner2 = { x: cx + Math.cos(a2) * innerRadius, y: cy + Math.sin(a2) * innerRadius };
+    const edge1 = kochPoints(inner1.x, inner1.y, cx + Math.cos(a1) * localRadius, cy + Math.sin(a1) * localRadius, iterations, charge % 2 ? 1 : -1);
+    const edge2 = kochPoints(inner2.x, inner2.y, cx + Math.cos(a2) * localRadius, cy + Math.sin(a2) * localRadius, iterations, charge % 2 ? -1 : 1);
     ctx.beginPath();
     edge1.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
-    for (let step = 1; step <= 8; step++) {
-      const angle = a1 + (a2 - a1) * step / 8;
-      ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+    for (let step = 1; step <= 10; step++) {
+      const angle = a1 + (a2 - a1) * step / 10;
+      ctx.lineTo(cx + Math.cos(angle) * localRadius, cy + Math.sin(angle) * localRadius);
     }
     [...edge2].reverse().forEach((point) => ctx.lineTo(point.x, point.y));
+    for (let step = 9; step >= 0; step--) {
+      const angle = a1 + (a2 - a1) * step / 10;
+      ctx.lineTo(cx + Math.cos(angle) * innerRadius, cy + Math.sin(angle) * innerRadius);
+    }
     ctx.closePath();
-    ctx.fillStyle = withSource ? 'rgba(74,18,21,.5)' : 'rgba(74,22,24,.38)';
+    const red = Math.round(70 + variant * 42);
+    ctx.fillStyle = withSource
+      ? `rgba(${red},16,23,${.43 + variant * .18})`
+      : `rgba(${red},18,25,${.32 + variant * .18})`;
     ctx.fill();
   }
 }
@@ -663,7 +682,7 @@ function drawTree(canvas, params, options = {}) {
   const lean = sourceLean;
   const rootOffset = -sourceWind * w * .015;
   tree.translate(w / 2 + rootOffset, h * (options.stage ? .84 : .69));
-  const sideBias = clamp(params.sideBias || 0, -.06, .06);
+  const sideBias = clamp(params.sideBias || 0, -.58, .58);
   const crownVoid = clamp(params.void || 0, 0, .5);
   const irregularity = clamp(params.irregularity || 0, 0, .6);
   const growth = clamp(params.growth ?? 1, .16, 1);
@@ -855,7 +874,48 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
   if (lineIndex < maxLines) ctx.fillText(line, x, y + lineIndex * lineHeight);
 }
 
-$('#saveCard').addEventListener('click', () => {
+function canvasToPngFile(canvas, filename) {
+  const dataUrl = canvas.toDataURL('image/png');
+  const encoded = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return new File([bytes], filename, { type: 'image/png' });
+}
+
+async function saveImageToDevice(canvas, filename) {
+  const file = canvasToPngFile(canvas, filename);
+  const sharePayload = { files: [file], title: 'Вишневый сад' };
+  const canShareFile = typeof navigator.share === 'function'
+    && typeof navigator.canShare === 'function'
+    && navigator.canShare(sharePayload);
+
+  // The QA route verifies the finished PNG without opening a personal share sheet.
+  if (new URLSearchParams(location.search).has('qa')) {
+    document.documentElement.dataset.imageSaveReady = String(file.size > 0);
+    document.documentElement.dataset.imageSaveMethod = canShareFile ? 'share' : 'download';
+    return true;
+  }
+
+  if (canShareFile) {
+    try {
+      await navigator.share(sharePayload);
+      return true;
+    } catch (error) {
+      if (error?.name === 'AbortError') return false;
+    }
+  }
+
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
+}
+
+$('#saveCard').addEventListener('click', async () => {
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = 900;
   exportCanvas.height = 1200;
@@ -885,10 +945,9 @@ $('#saveCard').addEventListener('click', () => {
   ctx.font = '22px Georgia';
   ctx.fillText('А.П. Чехов', 828, 1050);
   if (state.act === 'cut') drawExportCutOverlay(ctx, 900, 1200, state.cut);
-  const link = document.createElement('a');
-  link.download = `vishnevy-sad-${Date.now()}.png`;
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
+  const filename = `vishnevy-sad-${Date.now()}.png`;
+  const savedToDevice = await saveImageToDevice(exportCanvas, filename).catch(() => false);
+  if (!savedToDevice) return;
   state.saved.push({
     date: Date.now(),
     act: state.act,
@@ -900,6 +959,7 @@ $('#saveCard').addEventListener('click', () => {
 });
 
 $('#returnActs').addEventListener('click', () => show('acts'));
+$('#refreshCard').addEventListener('click', () => beginAct(state.act));
 
 window.addEventListener('resize', () => {
   if ($('.result').classList.contains('is-active')) drawResult();
