@@ -123,13 +123,14 @@ figcaption{font:10px/1.3 var(--sans);letter-spacing:.08em;text-transform:upperca
 .frame-corner.tr{right:8px;top:8px;border-width:3px 3px 0 0}.frame-corner.tr:after{right:8px;top:6px}
 .frame-corner.bl{left:8px;bottom:8px;border-width:0 0 3px 3px}.frame-corner.bl:after{left:8px;bottom:6px}
 .frame-corner.br{right:8px;bottom:8px;border-width:0 3px 3px 0}.frame-corner.br:after{right:8px;bottom:6px}
-.result-card header{position:absolute;z-index:6;top:36px;left:36px;right:36px;display:flex;justify-content:flex-end;font:12px/1.1 var(--serif)}
+.result-card header{position:absolute;z-index:6;top:36px;left:36px;right:36px;display:flex;justify-content:space-between;align-items:baseline;gap:18px;font:12px/1.1 var(--serif)}
+.card-act-label{max-width:58%;margin:0;font:8px/1.2 var(--sans);letter-spacing:.15em;text-transform:uppercase;color:#aaa49c}
 .result-card canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .result.is-cut #treeCanvas{z-index:5}
 .card-copy{position:absolute;z-index:6;left:36px;right:36px;bottom:37px;display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:start}
 .card-copy figure{margin:0;text-align:left}
 .card-copy blockquote{font:italic 11px/1.28 var(--serif);color:#d2cdc6}
-.card-copy figcaption{font-size:7px;margin-top:7px}
+.card-copy figcaption{font-size:7px;margin-top:3px}
 .card-copy footer{text-align:right}
 .card-copy h2{font:400 clamp(18px,5vw,25px)/.95 var(--serif);letter-spacing:-.035em;margin:0}
 .card-copy footer p{font:10px var(--serif);letter-spacing:.08em;margin:8px 0 0}

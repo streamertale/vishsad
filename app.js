@@ -481,6 +481,7 @@ function finishCapture(startedAt, duration) {
   if (state.act === 'grow') analyseGrow();
   else analyseCut(startedAt, duration);
   $('#cardDate').textContent = new Intl.DateTimeFormat('ru-RU').format(new Date());
+  $('#cardActLabel').textContent = state.act === 'cut' ? 'Отсечь прошлое' : 'Вырастить будущее';
   const quote = state.selectedQuote || selectQuote();
   $('#cardQuote').textContent = quote.text;
   $('#cardQuoteAuthor').textContent = quote.author;
@@ -868,10 +869,14 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
       ctx.fillText(line, x, y + lineIndex * lineHeight);
       line = word;
       lineIndex++;
-      if (lineIndex >= maxLines) return;
+      if (lineIndex >= maxLines) return y + (lineIndex - 1) * lineHeight;
     } else line = test;
   }
-  if (lineIndex < maxLines) ctx.fillText(line, x, y + lineIndex * lineHeight);
+  if (lineIndex < maxLines) {
+    ctx.fillText(line, x, y + lineIndex * lineHeight);
+    return y + lineIndex * lineHeight;
+  }
+  return y + Math.max(0, maxLines - 1) * lineHeight;
 }
 
 function canvasToPngFile(canvas, filename) {
@@ -928,16 +933,21 @@ $('#saveCard').addEventListener('click', async () => {
   ctx.strokeRect(24, 24, 852, 1152);
   ctx.strokeRect(34, 34, 832, 1132);
   ctx.fillStyle = '#eeeae3';
+  ctx.textAlign = 'left';
+  ctx.font = '15px Arial';
+  ctx.fillStyle = '#aaa49c';
+  ctx.fillText(state.act === 'cut' ? 'ОТСЕЧЬ ПРОШЛОЕ' : 'ВЫРАСТИТЬ БУДУЩЕЕ', 72, 96);
+  ctx.fillStyle = '#eeeae3';
   ctx.font = '27px Georgia';
   ctx.textAlign = 'right';
   ctx.fillText($('#cardDate').textContent, 828, 96);
   ctx.textAlign = 'left';
   ctx.font = 'italic 23px Georgia';
   const quote = state.selectedQuote || quoteBank[0];
-  wrapText(ctx, quote.text, 72, 1010, 390, 30, 4);
+  const quoteBottom = wrapText(ctx, quote.text, 72, 1010, 390, 30, 4);
   ctx.font = '15px Arial';
   ctx.fillStyle = '#9d9790';
-  ctx.fillText(quote.author.toUpperCase(), 72, 1140);
+  ctx.fillText(quote.author.toUpperCase(), 72, Math.min(1140, quoteBottom + 26));
   ctx.textAlign = 'right';
   ctx.fillStyle = '#eeeae3';
   ctx.font = '32px Georgia';
